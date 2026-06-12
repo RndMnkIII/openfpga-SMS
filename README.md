@@ -1,0 +1,117 @@
+# SMS for Analogue Pocket
+
+[![Latest Release](https://img.shields.io/github/v/tag/drizzt/openfpga-SMS?label=latest)](https://github.com/drizzt/openfpga-SMS/releases/latest) [![Downloads](https://img.shields.io/github/downloads/drizzt/openfpga-SMS/total)](https://github.com/drizzt/openfpga-SMS/releases) [![Platform](https://img.shields.io/badge/platform-Analogue%20Pocket-blue)](https://openfpga-library.github.io/analogue-pocket/)
+
+LLM assisted port of [MiSTer SMS core](https://github.com/MiSTer-devel/SMS_MiSTer)
+
+## Features
+
+- **Master System, Game Gear and SG-1000** (NTSC and PAL)
+- **Automatic mapper detection** — Sega, Codemasters, Korean, MSX/Nemesis, Dahjee, linear; same logic as MiSTer
+- **PSG + FM audio** — jt89 PSG and YM2413 (VM2413) FM
+- **Cart Saves** — 32 KB `.sav`, written back on exit
+- **Save States / Sleep** — Analogue OS save states and suspend/resume
+- **512-byte-headered dumps** handled automatically
+- **Settings** — Region (US/EU / Japan), TV System (NTSC / PAL — SMS and SG-1000, see below), FM Sound, Sprites Per Line, Game Gear Resolution (standard 160×144 / extended full field)
+
+## Currently Not Included
+
+Compared to MiSTer: light gun, paddle, SK-1100
+keyboard / SC-3000, System E, Game Genie, multitap, Game Gear link,
+BIOS support.
+
+## Three Cores, One Bitstream
+
+The `drizzt.SMS`, `drizzt.GG` and `drizzt.SG-1000` packages share the same
+FPGA bitstream and Chip32 loader, and appear under **Master System**,
+**Game Gear** and **SG-1000** in the Pocket library. Each browses only its
+own platform folder:
+
+- `Assets/sms/common` — `.sms` ROMs
+- `Assets/gg/common` — `.gg` ROMs
+- `Assets/sg1000/common` — `.sg` ROMs
+
+Separate packages are required because the Pocket file browser always
+opens the Assets folder of the data slot's platform index — it does not
+follow the platform the core was launched from. The system mode is
+selected automatically from the cartridge file extension by the Chip32
+loader (`src/chip32/chip32.asm`).
+
+## Controls
+
+| Pocket | SMS / GG / SG-1000 |
+|---|---|
+| D-pad | D-pad |
+| B | Button 1 |
+| A | Button 2 |
+| Start | Pause (SMS/SG) / Start (GG) |
+| Select | Reset button (SMS only) |
+
+The SMS Reset button is polled by game software, not a hardware reset
+(Game Gear and SG-1000 games never read it, so those cores don't map it).
+To hard-reset the core, use "Reset Core" in the Core Settings menu.
+
+## TV System (NTSC / PAL)
+
+The Master System and SG-1000 cores have a **TV System** setting in the
+Core Settings menu. PAL switches the whole core to real PAL timing, exactly
+like MiSTer: the system clock is reconfigured at runtime from 53.693175 MHz
+to 53.203424 MHz and the VDP generates 313-line frames at ~49.7 Hz. Use it
+for European releases tuned for 50 Hz — as on real hardware, NTSC games run
+~17% slower under PAL (and vice versa). The setting is remembered per core
+and applies to every game on that platform; it can also be toggled
+mid-game. Game Gear has no such setting — no PAL Game Gear ever existed.
+
+## Installation
+
+1. Download the latest release
+2. Copy the 3 folders `Cores/`, `Platforms/`, `Assets/` to the root of
+   your SD card
+   - **macOS users:** Finder replaces folders instead of merging them, so
+     copy the contents manually and be careful.
+3. Place your ROMs in `Assets/sms/common`, `Assets/gg/common` and
+   `Assets/sg1000/common`
+
+Platform artwork is not bundled. If your SD card doesn't already have
+images for these platforms, grab them from
+[dyreschlock/pocket-platform-images](https://github.com/dyreschlock/pocket-platform-images)
+(or use Pupdate's image-pack option).
+
+## Building from Source
+
+### Prerequisites
+
+- Quartus Prime Lite 21.1 — local install, or Docker/Podman with the
+  `raetro/quartus:21.1` image
+
+### Build
+
+```bash
+./scripts/build.sh          # bitstream → pkg/Cores/*/bitstream.rbf_r
+./scripts/build_chip32.sh   # chip32.bin → pkg/Cores/*/chip32.bin
+```
+
+## Credits
+
+- **[SMS_MiSTer](https://github.com/MiSTer-devel/SMS_MiSTer)** — original
+  MiSTer core, by its contributors; originally based on Ben's Papilio
+  Master System core
+- **T80 Z80 core** — Daniel Wallner (BSD-style license, see sources)
+- **jt89 PSG** — Jose Tejada (GPLv3)
+- **VM2413 OPLL** — Mitsutaka Okazaki
+- **APF framework** — Analogue (see file headers)
+- **[agg23/analogue-pocket-utils](https://github.com/agg23/analogue-pocket-utils)** —
+  data loader/unloader and audio I2S modules (MIT)
+- **[mincer-ray/openfpga-GBA](https://github.com/mincer-ray/openfpga-GBA)** —
+  reference port this repository is modeled on
+
+## License
+
+This repository as a whole is licensed under the GPLv3 (see LICENSE);
+individual files keep their original licenses as noted in their headers.
+
+Note: the VM2413 license forbids selling the object code or using it in a
+commercial product; this core is free software and must stay that way.
+
+Bugs in this port are likely port-specific — please do not report them to
+the MiSTer SMS repository.

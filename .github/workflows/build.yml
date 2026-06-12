@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build chip32
+        run: scripts/build_chip32.sh
+
+      - name: Check package consistency
+        run: scripts/check_packages.sh
+
+      - name: Bump version
+        id: version
+        run: |
+          set -- pkg/Cores/*/core.json
+          CURRENT=$(jq -r '.core.metadata.version' "$1")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW="${MAJOR}.${MINOR}.${PATCH}"
+          DATE=$(date -u +%Y-%m-%d)
+          # the per-platform core packages release in lockstep
+          for f in pkg/Cores/*/core.json; do
+            jq --arg v "$NEW" --arg d "$DATE" \
+              '.core.metadata.version = $v | .core.metadata.date_release = $d' \
+              "$f" > tmp.json && mv tmp.json "$f"
+          done
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumped $CURRENT → $NEW"
+
+      - name: Compile
+        run: docker run --rm -v ${{ github.workspace }}:/build -w /build raetro/quartus:21.1 quartus_sh -t generate.tcl
+
+      - name: Reverse bitstream
+        run: scripts/deploy_bitstream.sh
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pkg/Cores/*/core.json
+          git commit -m "release v${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin HEAD --tags
+
+      - name: Package release zip
+        run: cd pkg && zip -r ../openfpga-SMS_${{ steps.version.outputs.version }}.zip . -x '*/.gitkeep'
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: openfpga-SMS_${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
+
+      - name: Extract timing closure failures
+        if: always()
+        run: scripts/extract_timing_failures.sh src/fpga/build/output_files/ap_core.sta.summary timing.txt
+
+      - name: Upload timing report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timing
+          path: timing.txt
+
+      - name: Check custom STA reports
+        if: always()
+        run: |
+          echo "=== Custom STA reports ==="
+          ls -la build_output/reports/ 2>/dev/null || echo "No custom STA reports directory found"
+          echo "=== Output files ==="
+          ls -la src/fpga/build/output_files/*.rpt src/fpga/build/output_files/*.summary 2>/dev/null || true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          path: |
+            src/fpga/build/output_files/ap_core.fit.summary
+            src/fpga/build/output_files/ap_core.fit.rpt
+            src/fpga/build/output_files/ap_core.sta.summary
+            src/fpga/build/output_files/ap_core.sta.rpt
+            src/fpga/build/output_files/ap_core.flow.rpt
+            build_output/reports/

@@ -1,0 +1,72 @@
+{
+  "interact": {
+    "magic": "APF_VER_1",
+    "variables": [
+      {
+        "name": "Reset Core",
+        "id": 10,
+        "type": "action",
+        "enabled": true,
+        "address": "0xF0000000",
+        "value": 1
+      },
+      {
+        "name": "Region",
+        "id": 20,
+        "type": "list",
+        "enabled": true,
+        "address": "0x80",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "US/EU", "value": 0 },
+          { "name": "Japan", "value": 1 }
+        ]
+      },
+      {
+        "name": "TV System",
+        "id": 35,
+        "type": "list",
+        "enabled": true,
+        "address": "0x90",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "NTSC", "value": 0 },
+          { "name": "PAL", "value": 1 }
+        ]
+      },
+      {
+        "name": "FM Sound",
+        "id": 25,
+        "type": "list",
+        "enabled": true,
+        "address": "0x84",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Enabled", "value": 0 },
+          { "name": "Disabled", "value": 1 }
+        ]
+      },
+      {
+        "name": "Sprites Per Line",
+        "id": 30,
+        "type": "list",
+        "enabled": true,
+        "address": "0x88",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Standard", "value": 0 },
+          { "name": "All", "value": 1 }
+        ]
+      }
+    ],
+    "messages": []
+  }
+}

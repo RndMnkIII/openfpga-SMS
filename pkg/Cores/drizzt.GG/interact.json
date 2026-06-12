@@ -1,0 +1,58 @@
+{
+  "interact": {
+    "magic": "APF_VER_1",
+    "variables": [
+      {
+        "name": "Reset Core",
+        "id": 10,
+        "type": "action",
+        "enabled": true,
+        "address": "0xF0000000",
+        "value": 1
+      },
+      {
+        "name": "Region",
+        "id": 20,
+        "type": "list",
+        "enabled": true,
+        "address": "0x80",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "US/EU", "value": 0 },
+          { "name": "Japan", "value": 1 }
+        ]
+      },
+      {
+        "name": "Sprites Per Line",
+        "id": 30,
+        "type": "list",
+        "enabled": true,
+        "address": "0x88",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Standard", "value": 0 },
+          { "name": "All", "value": 1 }
+        ]
+      },
+      {
+        "name": "Game Gear Resolution",
+        "id": 35,
+        "type": "list",
+        "enabled": true,
+        "address": "0x8C",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Standard 160x144", "value": 0 },
+          { "name": "Extended", "value": 1 }
+        ]
+      }
+    ],
+    "messages": []
+  }
+}
