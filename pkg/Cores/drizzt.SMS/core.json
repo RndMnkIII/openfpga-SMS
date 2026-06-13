@@ -9,8 +9,8 @@
       "description": "Sega Master System",
       "author": "drizzt",
       "url": "https://github.com/drizzt/openfpga-SMS",
-      "version": "0.1.0",
-      "date_release": "2026-06-12"
+      "version": "1.0.0",
+      "date_release": "2026-06-13"
     },
     "framework": {
       "target_product": "Analogue Pocket",
