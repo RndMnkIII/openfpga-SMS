@@ -9,8 +9,8 @@
       "description": "Sega Game Gear",
       "author": "drizzt",
       "url": "https://github.com/drizzt/openfpga-SMS",
-      "version": "1.0.0",
-      "date_release": "2026-06-13"
+      "version": "1.1.0",
+      "date_release": "2026-06-15"
     },
     "framework": {
       "target_product": "Analogue Pocket",
