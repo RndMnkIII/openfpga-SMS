@@ -1,0 +1,37 @@
+# Pre-commit hooks. Activate per clone with:  pre-commit install
+# Run on demand with:  pre-commit run --all-files
+#
+# Scope note: this repo vendors MiSTer RTL (src/fpga/sms/rtl/) and APF
+# framework files (src/fpga/apf/) that must stay byte-unmodified, plus
+# Quartus build output (src/fpga/build/). Tier 1 here is validate-only —
+# no hook rewrites files — so no excludes are needed yet. Add excludes for
+# those paths before introducing any file-modifying hook (whitespace,
+# end-of-file, formatters).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json              # validate every *.json (pkg/Cores, Platforms)
+      - id: check-yaml              # validate .github/workflows/*.yml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files # guard against an accidental bitstream/zip commit
+        args: [--maxkb=500]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck              # lint scripts/*.sh (the bash build system)
+        args: [--severity=warning]  # flag real bugs; ignore info/style nags
+
+  # Project invariant: shared binaries identical, JSONs identical modulo the
+  # intentional per-platform interact ids, core.json version/date in lockstep.
+  # Same script CI runs — keep it as the single source of truth.
+  - repo: local
+    hooks:
+      - id: check-packages
+        name: check three-package consistency
+        entry: scripts/check_packages.sh
+        language: script
+        pass_filenames: false
+        always_run: true
