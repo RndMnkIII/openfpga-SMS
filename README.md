@@ -12,7 +12,7 @@ LLM assisted port of [MiSTer SMS core](https://github.com/MiSTer-devel/SMS_MiSTe
 - **Cart Saves** — 32 KB `.sav`, written back on exit
 - **Save States / Sleep** — Analogue OS save states and suspend/resume
 - **512-byte-headered dumps** handled automatically
-- **Settings** — Region (US/EU / Japan), TV System (NTSC / PAL — SMS and SG-1000, see below), FM Sound, Sprites Per Line, Game Gear Resolution (standard 160×144 / extended full field)
+- **Settings** — Region (US/EU / Japan), TV System (NTSC / PAL — SMS and SG-1000, see below), FM Sound, Sprites Per Line, Blank Border (BG color / black — blanks the VDP masked left column, SMS and SG-1000), Game Gear Resolution (standard 160×144 / extended full field)
 
 ## Currently Not Included
 

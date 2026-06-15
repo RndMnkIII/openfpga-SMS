@@ -663,6 +663,7 @@ end
 // 0x00000088  sprites per line: 0=standard, 1=all        [interact.json]
 // 0x0000008C  GG resolution: 0=standard 160x144, 1=ext.  [interact.json]
 // 0x00000090  TV system: 0=NTSC, 1=PAL (SMS/SG-1000)     [interact.json]
+// 0x00000094  blank border: 0=BG color, 1=black masked left column [interact.json]
 // 0xF0000000  reset core action                          [interact.json]
 
 reg        downloading = 0;
@@ -672,6 +673,7 @@ reg        fm_disable = 0;
 reg        sprites_all = 0;
 reg        gg_ext_res = 0;
 reg        pal = 0;
+reg        blank_border = 0;
 
 reg [13:0] reset_counter = 0;
 wire       core_reset = (reset_counter != 0);
@@ -689,6 +691,7 @@ always @(posedge clk_74a) begin
         32'h00000088: sprites_all <= bridge_wr_data[0];
         32'h0000008C: gg_ext_res  <= bridge_wr_data[0];
         32'h00000090: pal         <= bridge_wr_data[0];
+        32'h00000094: blank_border <= bridge_wr_data[0];
         32'hF0000000: reset_counter <= 14'd8000;  // ~108 us at 74.25 MHz
         endcase
     end
@@ -702,13 +705,14 @@ wire       fm_disable_s;
 wire       sprites_all_s;
 wire       gg_ext_res_s;
 wire       pal_s;
+wire       blank_border_s;
 wire       reset_n_s;
 wire       core_reset_s;
 wire       dataslot_allcomplete_s;
 
-synch_3 #(.WIDTH(11)) settings_sync (
-    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   reset_n,   core_reset,   dataslot_allcomplete},
-    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
+synch_3 #(.WIDTH(12)) settings_sync (
+    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   blank_border,   reset_n,   core_reset,   dataslot_allcomplete},
+    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, blank_border_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
     clk_sys
 );
 
@@ -1207,7 +1211,7 @@ system #(.MAX_SPPL(63), .BASE_DIR("../sms/")) system (
     .color      ( color ),
     .palettemode( palettemode ),
     .mask_column( mask_column ),
-    .black_column( 1'b0 ),
+    .black_column( blank_border_s ),
     .smode_M1   ( smode_M1 ),
     .smode_M2   ( smode_M2 ),
     .smode_M3   ( smode_M3 ),
