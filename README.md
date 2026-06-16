@@ -18,7 +18,14 @@ LLM assisted port of [MiSTer SMS core](https://github.com/MiSTer-devel/SMS_MiSTe
 
 Compared to MiSTer: light gun, paddle, SK-1100
 keyboard / SC-3000, System E, Game Genie, multitap, Game Gear link,
-BIOS support.
+external/copyrighted Sega BIOS file support.
+
+The internal open boot ROM — Bock's free SMS Boot Loader (SMS Power, 2001) — *is*
+included and runs in SMS mode, so BIOS-dependent carts such as Shadow Dancer boot
+correctly. It is controlled by the **BIOS** interact setting (Internal by
+default; set to Disable to skip the brief SEGA boot splash). The setting can also
+be overridden per game by placing a Presets file under
+`/Presets/drizzt.SMS/Interact/`. Game Gear and SG-1000 never use a boot ROM.
 
 ## Three Cores, One Bitstream
 

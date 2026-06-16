@@ -664,6 +664,7 @@ end
 // 0x0000008C  GG resolution: 0=standard 160x144, 1=ext.  [interact.json]
 // 0x00000090  TV system: 0=NTSC, 1=PAL (SMS/SG-1000)     [interact.json]
 // 0x00000094  blank border: 0=BG color, 1=black masked left column [interact.json]
+// 0x00000098  BIOS disable: 0=internal boot ROM on, 1=off (SMS only) [interact.json]
 // 0xF0000000  reset core action                          [interact.json]
 
 reg        downloading = 0;
@@ -674,6 +675,7 @@ reg        sprites_all = 0;
 reg        gg_ext_res = 0;
 reg        pal = 0;
 reg        blank_border = 0;
+reg        bios_disable = 0;
 
 reg [13:0] reset_counter = 0;
 wire       core_reset = (reset_counter != 0);
@@ -692,6 +694,7 @@ always @(posedge clk_74a) begin
         32'h0000008C: gg_ext_res  <= bridge_wr_data[0];
         32'h00000090: pal         <= bridge_wr_data[0];
         32'h00000094: blank_border <= bridge_wr_data[0];
+        32'h00000098: bios_disable <= bridge_wr_data[0];
         32'hF0000000: reset_counter <= 14'd8000;  // ~108 us at 74.25 MHz
         endcase
     end
@@ -706,13 +709,14 @@ wire       sprites_all_s;
 wire       gg_ext_res_s;
 wire       pal_s;
 wire       blank_border_s;
+wire       bios_disable_s;
 wire       reset_n_s;
 wire       core_reset_s;
 wire       dataslot_allcomplete_s;
 
-synch_3 #(.WIDTH(12)) settings_sync (
-    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   blank_border,   reset_n,   core_reset,   dataslot_allcomplete},
-    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, blank_border_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
+synch_3 #(.WIDTH(13)) settings_sync (
+    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   blank_border,   bios_disable,   reset_n,   core_reset,   dataslot_allcomplete},
+    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, blank_border_s, bios_disable_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
     clk_sys
 );
 
@@ -720,6 +724,13 @@ synch_3 #(.WIDTH(12)) settings_sync (
 wire gg          = (mode_s == 2'd1);
 wire palettemode = (mode_s == 2'd2);   // SG-1000: TMS9918 fixed palette
 wire ggres       = ~gg_ext_res_s & gg; // MiSTer: ggres = ~status[39] & gg
+// Internal boot ROM (mboot.mif = Bock's SMS Boot Loader, free homebrew) runs
+// only in SMS mode: BIOS-dependent carts (e.g. Shadow Dancer) need it to init
+// the machine and hand off to the cartridge via port $3E. mboot is an SMS
+// program, so it is forced OFF for GG (mode 1) and SG-1000 (mode 2). The
+// per-core BIOS toggle (interact id 45, default Internal) lets the user disable
+// the ~1 s SEGA splash; per-game override is possible via /Presets/.
+wire bios_en     = (mode_s == 2'd0) & ~bios_disable_s;
 
 
 // ============================================================
@@ -944,8 +955,10 @@ sdram ram (
 // ============================================================
 
 // State capture/restore only makes sense with a cart loaded and the core
-// running (Pocket analogue of MiSTer's ss_state_allowed = dbr; bios_en=0).
-// savestates.sv hangs waiting for a Z80 instruction boundary otherwise —
+// running (Pocket analogue of MiSTer's ss_state_allowed = dbr | ss_bios_mode).
+// dbr goes high at download start and never clears here, so the cart case
+// covers runtime; the extra guards also forbid SS while the boot ROM scans
+// slots. savestates.sv hangs waiting for a Z80 instruction boundary otherwise —
 // the controller errors out instead.
 wire        allow_ss = dbr & ~reset_active & ~downloading_s & dataslot_allcomplete_s;
 
@@ -1138,7 +1151,7 @@ system #(.MAX_SPPL(63), .BASE_DIR("../sms/")) system (
     .gg         ( gg ),
     .ggres      ( ggres ),
     .systeme    ( 1'b0 ),
-    .bios_en    ( 1'b0 ),
+    .bios_en    ( bios_en ),
     .ext_bios_sel    ( 1'b0 ),
     .ext_bios_loaded ( 1'b0 ),
 
@@ -1314,7 +1327,7 @@ savestates savestates_inst (
     .ss_save         ( ss_save ),
     .ss_load         ( ss_load ),
     .ss_slot         ( 2'd0 ),
-    .ss_bios_mode    ( 1'b0 ),
+    .ss_bios_mode    ( bios_en & ~dbr ),   // MiSTer: bios_en & ~dbr
     .ss_freeze       ( ss_freeze ),
     .vblank          ( VBlank ),
     // Z80

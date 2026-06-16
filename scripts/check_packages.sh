@@ -44,15 +44,16 @@ done
 
 # interact.json: the ONLY intentional divergences are whole entries absent
 # per platform (FM Sound id 25 and TV System id 35 missing on GG, GG
-# Resolution id 30 missing elsewhere, Blank Border id 40 missing on GG).
+# Resolution id 30 missing elsewhere, Blank Border id 40 missing on GG,
+# BIOS id 45 SMS-only — GG/SG never run the boot ROM).
 # After dropping those ids, the remaining entries must be identical —
 # anything else is drift.
 interact_hash() {
-  jq -S '[.interact.variables[] | select(.id != 25 and .id != 30 and .id != 35 and .id != 40)]' "$1" \
+  jq -S '[.interact.variables[] | select(.id != 25 and .id != 30 and .id != 35 and .id != 40 and .id != 45)]' "$1" \
     | md5sum | awk '{print $1}'
 }
 if [ "$(for f in pkg/Cores/*/interact.json; do interact_hash "$f"; done | sort -u | wc -l)" -ne 1 ]; then
-  echo "DRIFT: interact.json differs across packages beyond the intentional ids (25/30/35/40):"
+  echo "DRIFT: interact.json differs across packages beyond the intentional ids (25/30/35/40/45):"
   for f in pkg/Cores/*/interact.json; do
     echo "  $f: $(interact_hash "$f")"
   done

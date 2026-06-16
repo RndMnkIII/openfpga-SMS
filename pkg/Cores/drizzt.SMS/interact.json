@@ -79,6 +79,20 @@
           { "name": "BG Color", "value": 0 },
           { "name": "Black", "value": 1 }
         ]
+      },
+      {
+        "name": "BIOS",
+        "id": 45,
+        "type": "list",
+        "enabled": true,
+        "address": "0x98",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Internal", "value": 0 },
+          { "name": "Disable", "value": 1 }
+        ]
       }
     ],
     "messages": []
