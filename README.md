@@ -71,9 +71,13 @@ mid-game. Game Gear has no such setting — no PAL Game Gear ever existed.
 
 ## Installation
 
-1. Download the latest release
-2. Copy the 3 folders `Cores/`, `Platforms/`, `Assets/` to the root of
-   your SD card
+1. Download the latest release. Each system ships as its own zip
+   (`openfpga-SMS_*.zip`, `openfpga-GG_*.zip`, `openfpga-SG-1000_*.zip`) —
+   grab only the platform(s) you want. Each zip contains the `Cores/`,
+   `Platforms/` and `Assets/` for that one system. (Installing via Pupdate
+   likewise pulls just the platform you pick.)
+2. Copy the `Cores/`, `Platforms/`, `Assets/` folders from the zip(s) to the
+   root of your SD card
    - **macOS users:** Finder replaces folders instead of merging them, so
      copy the contents manually and be careful.
 3. Place your ROMs in `Assets/sms/common`, `Assets/gg/common` and

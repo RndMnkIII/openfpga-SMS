@@ -69,15 +69,15 @@ jobs:
           git tag "v${{ steps.version.outputs.version }}"
           git push origin HEAD --tags
 
-      - name: Package release zip
-        run: cd pkg && zip -r ../openfpga-SMS_${{ steps.version.outputs.version }}.zip . -x '*/.gitkeep'
+      - name: Package release zips
+        run: scripts/package_release.sh "${{ steps.version.outputs.version }}"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
-          files: openfpga-SMS_${{ steps.version.outputs.version }}.zip
+          files: openfpga-*_${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
 
       - name: Extract timing closure failures
