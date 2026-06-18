@@ -5,6 +5,7 @@ src/fpga/build/db/
 src/fpga/build/incremental_db/
 src/fpga/build/output_files/
 src/fpga/build/c5_pin_model_dump.txt
+src/fpga/build/*assignment_defaults.qdf
 src/fpga/apf/build_id.mif
 *.qws
 *.rpt.bak

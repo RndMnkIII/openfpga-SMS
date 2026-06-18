@@ -92,14 +92,23 @@ images for these platforms, grab them from
 
 ### Prerequisites
 
-- Quartus Prime Lite 21.1 — local install, or Docker/Podman with the
-  `raetro/quartus:21.1` image
+- Quartus Prime 21.1 or 25.1 (Standard/Lite) — local install, or Docker/Podman
+  with the `raetro/quartus:21.1` image (the CI/release baseline). Both 21.1 and
+  25.1 build from the same tree; the project files are kept version-neutral.
 
 ### Build
 
 ```bash
 ./scripts/build.sh          # bitstream → pkg/Cores/*/bitstream.rbf_r
 ./scripts/build_chip32.sh   # chip32.bin → pkg/Cores/*/chip32.bin
+```
+
+`build.sh` defaults to Quartus 21.1 (matching the CI/release toolchain). To
+build with 25.1 instead, point `QUARTUS_DIR` at it:
+
+```bash
+./scripts/build.sh                                               # default: 21.1
+QUARTUS_DIR=/opt/intelFPGA_lite/25.1/quartus ./scripts/build.sh  # 25.1
 ```
 
 ## Credits
