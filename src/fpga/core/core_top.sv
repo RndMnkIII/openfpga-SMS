@@ -367,10 +367,16 @@ pll_reconfig pll_reconfig_inst (
     .reconfig_from_pll( reconfig_from_pll )
 );
 
-always @(posedge clk_74a) begin
-    reg [2:0] state = 0;
-    reg pal_r = 0;
+// Reconfig FSM state at module scope so the deterministic-reboot reset block
+// below can synchronize it to clk_sys directly: pal_r = the tv system the PLL
+// is being driven to; (state != 0) | cfg_waitrequest = a reconfig is in flight.
+// No intermediate clk_74a registers — synch_3 already registers its input, and
+// keeping these off the marginal pll_reconfig domain avoids the STA hit the
+// earlier pal_cfg/pal_busy pre-registers caused (which had forced a SEED reroll).
+reg [2:0] state = 0;
+reg       pal_r = 0;
 
+always @(posedge clk_74a) begin
     cfg_write <= 0;
 
     if (!cfg_waitrequest) begin
@@ -720,6 +726,17 @@ synch_3 #(.WIDTH(13)) settings_sync (
     clk_sys
 );
 
+// Configured-pal status (clk_74a -> clk_sys) for the deterministic-reboot reset.
+// pal_r and the in-flight term are fed straight into synch_3 (which registers
+// its input internally), so no clk_74a pre-register FFs sit on the marginal
+// pll_reconfig domain.
+wire pal_cfg_s, pal_busy_s;
+synch_3 #(.WIDTH(2)) pal_cfg_sync (
+    {pal_r,     (state != 0) | cfg_waitrequest},
+    {pal_cfg_s, pal_busy_s},
+    clk_sys
+);
+
 // Mode-derived signals (mirror MiSTer SMS.sv extension handling)
 wire gg          = (mode_s == 2'd1);
 wire palettemode = (mode_s == 2'd2);   // SG-1000: TMS9918 fixed palette
@@ -737,12 +754,30 @@ wire bios_en     = (mode_s == 2'd0) & ~bios_disable_s;
 // Section 4: Reset
 // ============================================================
 
-// ~pll_ever_locked (not ~pll_core_locked): a mid-game NTSC/PAL reconfig
-// drops lock briefly; resetting here would restart the game and wipe WRAM.
-// pll_ever_locked is a clk_74a reg, but it is single-bit and monotonic
-// (0->1 once), so sampling it from clk_sys is safe.
-wire raw_reset = ~reset_n_s | core_reset_s | ~pll_ever_locked | downloading_s
-               | ~dataslot_allcomplete_s;
+// Deterministic boot/reboot — the fix for the intermittent PAL BIOS-boot sprite
+// corruption (Shadow Dancer). Two cooperating ideas, replacing earlier timer
+// guesses that only shifted the probability:
+//
+//  * pal_not_ready holds the core in reset until the PLL is actually running at
+//    the REQUESTED tv system (pal_cfg_s == pal_s) with no reconfig in flight
+//    (pal_busy_s). One term covers the whole pal path: the ~1.8 ms dl_quiet
+//    deferral, the reconfig + relock, and an unbounded-late OS replay of the
+//    persisted setting — each just becomes one clean, held reboot. A live
+//    NTSC<->PAL toggle is thus a clean atomic reboot, never a mid-frame flip.
+//
+//  * phase_hold delays the FINAL release until video.vhd is at frame top
+//    (vx==vy==0). video.vhd has no reset and free-runs, so otherwise the CPU
+//    leaves reset at a RANDOM scanline and the BIOS->cart handoff lands at a
+//    random phase — the root cause (Reset Core reproduces it identically, with
+//    no reconfig at all). Pinning the release phase makes every cold boot AND
+//    every Reset Core start mboot at the same scan position, so a BIOS-dependent
+//    cart's one-time sprite-VRAM setup lands in the same safe part of the frame.
+//
+// ~pll_ever_locked (monotonic, single-bit) covers power-up before first lock.
+wire pal_not_ready = (pal_s != pal_cfg_s) | pal_busy_s;
+
+wire core_hold = ~reset_n_s | core_reset_s | ~pll_ever_locked | downloading_s
+               | ~dataslot_allcomplete_s | pal_not_ready;
 
 // WRAM clear on reset (MiSTer SMS.sv pattern; 8 KB — systeme/sc3000 are
 // hardwired off, so system.vhd never drives ram_a[13])
@@ -750,7 +785,7 @@ reg [12:0] ram_clr_addr;
 reg        ram_clr_run = 0;
 
 always @(posedge clk_sys) begin
-    if (raw_reset) begin
+    if (core_hold) begin
         ram_clr_addr <= 0;
         ram_clr_run  <= 1'b1;
     end else if (ram_clr_run) begin
@@ -759,7 +794,21 @@ always @(posedge clk_sys) begin
     end
 end
 
-wire reset_active = raw_reset | ram_clr_run;
+// Phase-aligned release: re-arm whenever the core is not otherwise ready, then
+// drop only at frame top. Bounded by one frame (~16-20 ms).
+reg phase_hold = 1'b1;
+always @(posedge clk_sys) begin
+    if (core_hold | ram_clr_run)       phase_hold <= 1'b1;
+    else if (vx == 9'd0 && vy == 9'd0) phase_hold <= 1'b0;
+end
+
+wire reset_active = core_hold | ram_clr_run | phase_hold;
+
+// Video-timing pal latched only while held: video.vhd then sees a STABLE pal for
+// the machine's whole life (MiSTer parity), so a live pal_s change can never
+// switch its 262<->313 line wrap mid-frame.
+reg pal_machine = 1'b0;
+always @(posedge clk_sys) if (reset_active) pal_machine <= pal_s;
 
 // dbr: high once a cartridge has been loaded (no eject on Pocket)
 reg dbr = 0;
@@ -1296,7 +1345,7 @@ system #(.MAX_SPPL(63), .BASE_DIR("../sms/")) system (
 video video (
     .clk        ( clk_sys ),
     .ce_pix     ( ce_pix ),
-    .pal        ( pal_s ),
+    .pal        ( pal_machine ),
     .ggres      ( ggres ),
     .border     ( 1'b0 ),
     .mask_column( mask_column ),
