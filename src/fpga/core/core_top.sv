@@ -250,10 +250,16 @@ assign cart_pin30_pwroff_reset = 1'b0;
 assign cart_tran_pin31 = 1'bz;
 assign cart_tran_pin31_dir = 1'b0;
 
-// link port unused
-assign port_tran_so      = 1'bz;
-assign port_tran_so_dir  = 1'b0;
-assign port_tran_si      = 1'bz;
+// Game Gear link (Gear-to-Gear) on the Pocket link port. Two-wire serial:
+//   SO = TxD (Port C bit 4), SI = RxD (Port C bit 5).
+// The GBA-style link cable crosses SO<->SI, which is exactly the real
+// Gear-to-Gear TxD<->RxD crossover, so two Pockets link with a straight cable.
+// SD/SCK stay idle (the standard cable carries no handshake line). The port is
+// driven only in Game Gear mode with the link option on (link_active); otherwise
+// it is tristated exactly as before. See link_active / si_sync / gg_link_out below.
+assign port_tran_so      = link_active ? gg_link_out[4] : 1'bz; // TxD (PC4), push-pull
+assign port_tran_so_dir  = link_active;                        // 1=OUT while linking
+assign port_tran_si      = 1'bz;                               // RxD (PC5), always input
 assign port_tran_si_dir  = 1'b0;
 assign port_tran_sck     = 1'bz;
 assign port_tran_sck_dir = 1'b0;
@@ -671,6 +677,7 @@ end
 // 0x00000090  TV system: 0=NTSC, 1=PAL (SMS/SG-1000)     [interact.json]
 // 0x00000094  blank border: 0=BG color, 1=black masked left column [interact.json]
 // 0x00000098  BIOS disable: 0=internal boot ROM on, 1=off (SMS only) [interact.json]
+// 0x0000009C  link enable: 0=off, 1=on (Game Gear link, GG only)  [interact.json]
 // 0xF0000000  reset core action                          [interact.json]
 
 reg        downloading = 0;
@@ -682,6 +689,7 @@ reg        gg_ext_res = 0;
 reg        pal = 0;
 reg        blank_border = 0;
 reg        bios_disable = 0;
+reg        link_enable = 0;
 
 reg [13:0] reset_counter = 0;
 wire       core_reset = (reset_counter != 0);
@@ -701,6 +709,7 @@ always @(posedge clk_74a) begin
         32'h00000090: pal         <= bridge_wr_data[0];
         32'h00000094: blank_border <= bridge_wr_data[0];
         32'h00000098: bios_disable <= bridge_wr_data[0];
+        32'h0000009C: link_enable  <= bridge_wr_data[0];
         32'hF0000000: reset_counter <= 14'd8000;  // ~108 us at 74.25 MHz
         endcase
     end
@@ -716,13 +725,14 @@ wire       gg_ext_res_s;
 wire       pal_s;
 wire       blank_border_s;
 wire       bios_disable_s;
+wire       link_enable_s;
 wire       reset_n_s;
 wire       core_reset_s;
 wire       dataslot_allcomplete_s;
 
-synch_3 #(.WIDTH(13)) settings_sync (
-    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   blank_border,   bios_disable,   reset_n,   core_reset,   dataslot_allcomplete},
-    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, blank_border_s, bios_disable_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
+synch_3 #(.WIDTH(14)) settings_sync (
+    {downloading,   mode,   region,   fm_disable,   sprites_all,   gg_ext_res,   pal,   blank_border,   bios_disable,   link_enable,   reset_n,   core_reset,   dataslot_allcomplete},
+    {downloading_s, mode_s, region_s, fm_disable_s, sprites_all_s, gg_ext_res_s, pal_s, blank_border_s, bios_disable_s, link_enable_s, reset_n_s, core_reset_s, dataslot_allcomplete_s},
     clk_sys
 );
 
@@ -748,6 +758,17 @@ wire ggres       = ~gg_ext_res_s & gg; // MiSTer: ggres = ~status[39] & gg
 // per-core BIOS toggle (interact id 45, default Internal) lets the user disable
 // the ~1 s SEGA splash; per-game override is possible via /Presets/.
 wire bios_en     = (mode_s == 2'd0) & ~bios_disable_s;
+
+// ---- Game Gear link (drives the port_tran_* assigns in Section 2) ----
+// Active only in Game Gear mode with the link option enabled. gg_link_out is the
+// SMS core's open-drain Port C drive; we expose bit 4 (TxD) on SO. The incoming
+// RxD line (the other Pocket's TxD on SI) is async to clk_sys, so it is passed
+// through the project's standard CDC primitive before reaching Port C bit 5 (the
+// UART RX sampler in io.vhd adds further ce_cpu-rate filtering on top).
+wire [6:0] gg_link_out;
+wire       link_active = link_enable_s & gg;
+wire       si_sync;
+synch_2 si_link_sync (.i(port_tran_si), .o(si_sync), .clk(clk_sys), .rise(), .fall());
 
 
 // ============================================================
@@ -1208,9 +1229,9 @@ system #(.MAX_SPPL(63), .BASE_DIR("../sms/")) system (
     .GG_CODE    ( 129'd0 ),
     .GG_RESET   ( 1'b0 ),
     .GG_AVAIL   ( ),
-    .gg_link_en ( 1'b0 ),
-    .gg_link_in ( 7'h7F ),
-    .gg_link_out( ),
+    .gg_link_en ( link_active ),
+    .gg_link_in ( {1'b1, si_sync, 5'b11111} ), // {PC6, PC5=RxD, PC4..PC0 idle}
+    .gg_link_out( gg_link_out ),
 
     .RESET_n    ( ~reset_active ),
 

@@ -42,10 +42,10 @@ for json in audio.json variants.json info.txt icon.bin; do
   fi
 done
 
-# interact.json: the ONLY intentional divergences are whole entries absent
-# per platform (FM Sound id 25 and TV System id 35 missing on GG, GG
-# Resolution id 30 missing elsewhere, Blank Border id 40 missing on GG,
-# BIOS id 45 SMS-only — GG/SG never run the boot ROM).
+# interact.json: the ONLY intentional divergences are platform-specific
+# entries (FM Sound id 25 and TV System id 35 missing on GG; GG Resolution
+# and Game Gear Link reuse ids 35/40 on GG where TV System/Blank Border are
+# absent; BIOS id 45 SMS-only — GG/SG never run the boot ROM).
 # After dropping those ids, the remaining entries must be identical —
 # anything else is drift.
 interact_hash() {

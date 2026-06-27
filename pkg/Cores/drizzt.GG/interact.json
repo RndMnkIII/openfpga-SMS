@@ -51,6 +51,20 @@
           { "name": "Standard 160x144", "value": 0 },
           { "name": "Extended", "value": 1 }
         ]
+      },
+      {
+        "name": "Game Gear Link",
+        "id": 40,
+        "type": "list",
+        "enabled": true,
+        "address": "0x9C",
+        "persist": true,
+        "writeonly": true,
+        "defaultval": 0,
+        "options": [
+          { "name": "Off", "value": 0 },
+          { "name": "On", "value": 1 }
+        ]
       }
     ],
     "messages": []

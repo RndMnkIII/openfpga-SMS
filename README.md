@@ -12,12 +12,13 @@ LLM assisted port of [MiSTer SMS core](https://github.com/MiSTer-devel/SMS_MiSTe
 - **Cart Saves** — 32 KB `.sav`, written back on exit
 - **Save States / Sleep** — Analogue OS save states and suspend/resume
 - **512-byte-headered dumps** handled automatically
+- **Game Gear link** — two-wire Gear-to-Gear serial link between two Pockets over the link port (enable per the **Game Gear Link** setting); link cable required
 - **Settings** — Region (US/EU / Japan), TV System (NTSC / PAL — SMS and SG-1000, see below), FM Sound, Sprites Per Line, Blank Border (BG color / black — blanks the VDP masked left column, SMS and SG-1000), Game Gear Resolution (standard 160×144 / extended full field)
 
 ## Currently Not Included
 
 Compared to MiSTer: light gun, paddle, SK-1100
-keyboard / SC-3000, System E, Game Genie, multitap, Game Gear link,
+keyboard / SC-3000, System E, Game Genie, multitap,
 external/copyrighted Sega BIOS file support.
 
 The internal open boot ROM — Bock's free SMS Boot Loader (SMS Power, 2001) — *is*
